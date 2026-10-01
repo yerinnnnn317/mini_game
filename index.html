@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>30초 장애물 피하기 미니게임</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 20px;
+    }
+    #game-container {
+      /* 전체 상자 폭을 400px -> 600px로 확대 */
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    #rules, #controls, #status {
+      margin-bottom: 15px;
+      font-size: 16px;
+      color: #333;
+    }
+    #status {
+      font-weight: bold;
+      font-size: 18px;
+      color: #007bff;
+    }
+    #canvas {
+      background: #222;
+      border-radius: 4px;
+      display: block;
+      margin: 0 auto;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      cursor: pointer;
+      border: none;
+      background-color: #28a745;
+      color: white;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <h2>30초 피하기 게임</h2>
+  
+  <div id="rules">
+    <strong>게임 규칙:</strong> 30초 동안 떨어지는 빨간색 장애물을 피해 살아남으세요!
+  </div>
+  
+  <div id="controls">
+    <strong>조작 방법:</strong> 키보드 좌우 방향키(← / →) 또는 화면 터치/클릭
+  </div>
+  
+  <div id="status">상태: 시작 대기 중 (남은 시간: 30초)</div>
+  
+  <!-- 게임 화면 가로 500, 세로 500으로 대폭 확대 -->
+  <canvas id="canvas" width="500" height="500"></canvas>
+  
+  <button id="start-btn" onclick="startGame()">게임 시작 / 다시 시작</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
+
+  // 화면이 커진 만큼 플레이어 위치 및 이동 속도 조정
+  let player = { x: 230, y: 450, width: 40, height: 40, speed: 7 };
+  let obstacles = [];
+  let timer = 30;
+  let gameInterval = null;
+  let timerInterval = null;
+  let obstacleInterval = null;
+  let isGameOver = false;
+  let keys = {};
+
+  window.addEventListener('keydown', (e) => keys[e.key] = true);
+  window.addEventListener('keyup', (e) => keys[e.key] = false);
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    if (clickX < canvas.width / 2) {
+      player.x = Math.max(0, player.x - 40);
+    } else {
+      player.x = Math.min(canvas.width - player.width, player.x + 40);
+    }
+  });
+
+  function startGame() {
+    clearInterval(gameInterval);
+    clearInterval(timerInterval);
+    clearInterval(obstacleInterval);
+    
+    player.x = 230;
+    obstacles = [];
+    timer = 30;
+    isGameOver = false;
+    
+    statusEl.innerText = `상태: 게임 진행 중 (남은 시간: ${timer}초)`;
+
+    gameInterval = setInterval(update, 1000 / 60);
+    
+    timerInterval = setInterval(() => {
+      timer--;
+      if (timer > 0) {
+        statusEl.innerText = `상태: 게임 진행 중 (남은 시간: ${timer}초)`;
+      } else {
+        endGame(true);
+      }
+    }, 1000);
+
+    obstacleInterval = setInterval(() => {
+      const size = 30;
+      const x = Math.random() * (canvas.width - size);
+      obstacles.push({ x: x, y: 0, width: size, height: size, speed: 4 + Math.random() * 3 });
+    }, 350);
+  }
+
+  function update() {
+    if (isGameOver) return;
+
+    if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+    if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+
+    for (let i = 0; i < obstacles.length; i++) {
+      let obs = obstacles[i];
+      obs.y += obs.speed;
+
+      if (
+        player.x < obs.x + obs.width &&
+        player.x + player.width > obs.x &&
+        player.y < obs.y + obs.height &&
+        player.y + player.height > obs.y
+      ) {
+        endGame(false);
+        return;
+      }
+    }
+
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 플레이어 (초록색)
+    ctx.fillStyle = '#28a745';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // 장애물 (빨간색)
+    ctx.fillStyle = '#dc3545';
+    for (let obs of obstacles) {
+      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    }
+  }
+
+  function endGame(isSuccess) {
+    isGameOver = true;
+    clearInterval(gameInterval);
+    clearInterval(timerInterval);
+    clearInterval(obstacleInterval);
+
+    if (isSuccess) {
+      statusEl.innerText = "상태: 성공! 30초 동안 무사히 버텼습니다 🎉";
+    } else {
+      statusEl.innerText = "상태: 실패! 장애물에 충돌했습니다 💥";
+    }
+  }
+</script>
+
+</body>
+</html>
